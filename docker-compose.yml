@@ -1,0 +1,72 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────
+#  Folio — AI Book Explorer
+#  Docker Compose Deployment
+# ─────────────────────────────────────────────────────────
+
+services:
+
+  # ── Main Application ──────────────────────────────────
+  book-explorer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: book-explorer-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # ⚡ REQUIRED: Get your free API key at https://console.groq.com
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Optional: Change the AI model (free options: llama3-8b-8192, llama3-70b-8192, mixtral-8x7b-32768, gemma-7b-it)
+      GROQ_MODEL: ${GROQ_MODEL:-llama3-8b-8192}
+      # Spring profiles
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      # JVM options
+      JAVA_OPTS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseG1GC
+        -Djava.security.egd=file:/dev/./urandom
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - book-net
+    labels:
+      - "com.folio.service=book-explorer"
+      - "com.folio.version=1.0.0"
+
+  # ── Nginx Reverse Proxy (optional but recommended) ────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: book-explorer-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      book-explorer:
+        condition: service_healthy
+    networks:
+      - book-net
+    profiles:
+      - with-nginx
+
+networks:
+  book-net:
+    driver: bridge
+    name: book-explorer-network
