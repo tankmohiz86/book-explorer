@@ -22,8 +22,8 @@ public class AiService {
 
     private final WebClient groqClient;
 
-    @Value("${app.groq.api-key:}")
-    private String groqApiKey;llama3-8b-8192}")
+    @Value("${app.groq.api-key:llama3-8b-8192}")
+    private String groqApiKey;
 
     @Value("${app.groq.model:llama3-8b-8192}")
     private String groqModel;
