@@ -25,7 +25,7 @@ public class AiService {
     @Value("${app.groq.api-key:}")
     private String groqApiKey;
 
-    @Value("${app.groq.model:llama3-8b-8192}")
+    @Value("${app.groq.model:openai/gpt-oss-120b}")
     private String groqModel;
 
     public ActionItemsResponse generateActionItems(String title, String author, String summary, List<String> subjects) {
