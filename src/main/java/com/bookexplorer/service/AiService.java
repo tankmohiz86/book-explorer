@@ -22,10 +22,10 @@ public class AiService {
 
     private final WebClient groqClient;
 
-    @Value("${app.groq.api-key:llama3-8b-8192}")
+    @Value("${app.groq.api-key:llama-3.3-70b-versatile}")
     private String groqApiKey;
 
-    @Value("${app.groq.model:llama3-8b-8192}")
+    @Value("${app.groq.model:llama-3.3-70b-versatile}")
     private String groqModel;
 
     public ActionItemsResponse generateActionItems(String title, String author, String summary, List<String> subjects) {
