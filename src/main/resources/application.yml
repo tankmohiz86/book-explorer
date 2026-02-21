@@ -11,8 +11,8 @@ spring:
       static-locations: classpath:/static/
 
   groq:
-    api-key: gsk_Y74HVh2ewULSL54CDWR2WGdyb3FYB9MbG2wiumVk7WNHRAg3wt0Ce0d94
-    model: openai/gpt-oss-120b
+    api-key: ${GROQ_API_KEY}
+    model: llama-3.3-70b-versatile
 
 logging:
   level:
