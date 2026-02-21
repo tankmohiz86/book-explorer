@@ -1,0 +1,21 @@
+server:
+  port: 8080
+  compression:
+    enabled: true
+
+spring:
+  application:
+    name: book-explorer
+  web:
+    resources:
+      static-locations: classpath:/static/
+
+app:
+  groq:
+    api-key: ${GROQ_API_KEY:}
+    model: ${GROQ_MODEL:llama3-8b-8192}
+
+logging:
+  level:
+    com.bookexplorer: INFO
+    org.springframework.web.reactive: WARN

@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Folio — AI Book Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1209;
+      --paper: #f5f0e8;
+      --cream: #ede7d3;
+      --amber: #c8853a;
+      --amber-light: #e8a85a;
+      --rust: #8b3a2a;
+      --sage: #4a6741;
+      --muted: #7a6f5e;
+      --border: #d4c9b0;
+      --card-bg: #faf6ee;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── NOISE TEXTURE OVERLAY ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      padding: 2rem 2rem 0;
+      display: flex;
+      align-items: baseline;
+      gap: 1.5rem;
+      border-bottom: 1.5px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .logo em {
+      font-style: italic;
+      color: var(--amber);
+    }
+
+    .tagline {
+      font-size: 0.8rem;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-left: 1.5px solid var(--border);
+      padding-left: 1.5rem;
+    }
+
+    /* ─── HERO SEARCH ─── */
+    .hero {
+      padding: 4rem 2rem 3rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .hero-text {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 6vw, 4rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-text em {
+      font-style: italic;
+      color: var(--amber);
+      position: relative;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 0;
+      border: 2px solid var(--ink);
+      background: white;
+      position: relative;
+      box-shadow: 4px 4px 0 var(--ink);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .search-bar:focus-within {
+      box-shadow: 6px 6px 0 var(--amber);
+      transform: translate(-2px, -2px);
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 1.1rem 1.5rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .search-input::placeholder {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .search-btn {
+      padding: 1.1rem 2rem;
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .search-btn:hover { background: var(--amber); }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .search-hints {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .hint-chip {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid var(--border);
+      background: var(--cream);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+    }
+
+    .hint-chip:hover {
+      border-color: var(--amber);
+      color: var(--amber);
+      background: white;
+    }
+
+    /* ─── RESULTS AREA ─── */
+    #results-area {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .results-count {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .results-query {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--amber);
+      background: var(--cream);
+      padding: 0.2rem 0.6rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── BOOK GRID ─── */
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    /* ─── BOOK CARD ─── */
+    .book-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      animation: cardReveal 0.4s ease backwards;
+    }
+
+    .book-card:nth-child(1) { animation-delay: 0.05s; }
+    .book-card:nth-child(2) { animation-delay: 0.1s; }
+    .book-card:nth-child(3) { animation-delay: 0.15s; }
+    .book-card:nth-child(4) { animation-delay: 0.2s; }
+    .book-card:nth-child(5) { animation-delay: 0.25s; }
+    .book-card:nth-child(6) { animation-delay: 0.3s; }
+    .book-card:nth-child(7) { animation-delay: 0.35s; }
+    .book-card:nth-child(8) { animation-delay: 0.4s; }
+
+    @keyframes cardReveal {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .book-card:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 5px 5px 0 var(--amber);
+      border-color: var(--amber);
+    }
+
+    .book-cover-wrap {
+      aspect-ratio: 3/4;
+      overflow: hidden;
+      background: var(--cream);
+      position: relative;
+    }
+
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+
+    .book-card:hover .book-cover { transform: scale(1.04); }
+
+    .book-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--cream) 0%, var(--border) 100%);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .book-cover-placeholder .ph-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+    }
+
+    .book-cover-placeholder .ph-spine {
+      width: 3px;
+      height: 40px;
+      background: var(--amber);
+      margin: 0.75rem auto;
+    }
+
+    .book-cover-placeholder .ph-author {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .book-info {
+      padding: 1.25rem;
+    }
+
+    .book-year {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--amber);
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    .book-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--ink);
+      margin-bottom: 0.3rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .book-author {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 300;
+      margin-bottom: 0.75rem;
+    }
+
+    .book-tags {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .book-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      padding: 0.2rem 0.45rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .book-summary {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .book-cta {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+
+    .book-cta-arrow { transition: transform 0.2s ease; }
+    .book-card:hover .book-cta-arrow { transform: translateX(4px); }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(26,18,9,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      animation: overlayIn 0.2s ease;
+    }
+
+    @keyframes overlayIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 8px 8px 0 var(--ink);
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.9) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 2rem;
+      height: 2rem;
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      transition: background 0.2s ease;
+    }
+
+    .modal-close:hover { background: var(--rust); }
+
+    .modal-inner {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 0;
+    }
+
+    .modal-cover-col {
+      background: var(--cream);
+      padding: 2rem 1.5rem;
+      border-right: 1.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .modal-cover {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .modal-cover-placeholder {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: linear-gradient(145deg, var(--border), var(--cream));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .modal-cover-placeholder svg { opacity: 0.3; }
+
+    .modal-meta {
+      text-align: center;
+    }
+
+    .modal-meta-item {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .modal-meta-item strong {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .modal-content-col {
+      padding: 2rem;
+      overflow: hidden;
+    }
+
+    .modal-year-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-author {
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-section-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .modal-summary {
+      font-size: 0.9rem;
+      line-height: 1.75;
+      color: var(--ink);
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-subjects {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-subject {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.3rem 0.6rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── AI ACTION ITEMS ─── */
+    .ai-section {
+      margin-top: 1.5rem;
+      border-top: 1.5px solid var(--border);
+      padding-top: 1.5rem;
+    }
+
+    .ai-trigger-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.9rem 1.5rem;
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+      box-shadow: 3px 3px 0 var(--amber);
+    }
+
+    .ai-trigger-btn:hover {
+      background: var(--amber);
+      color: var(--ink);
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .ai-trigger-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .ai-spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ai-results {
+      margin-top: 1.5rem;
+      animation: fadeUp 0.35s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-model-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .ai-model-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--sage);
+    }
+
+    .action-items-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .action-item {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      gap: 1rem;
+      align-items: start;
+      padding: 1rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--amber);
+      animation: itemReveal 0.3s ease backwards;
+    }
+
+    .action-item:nth-child(1) { animation-delay: 0.05s; }
+    .action-item:nth-child(2) { animation-delay: 0.1s; }
+    .action-item:nth-child(3) { animation-delay: 0.15s; }
+    .action-item:nth-child(4) { animation-delay: 0.2s; }
+    .action-item:nth-child(5) { animation-delay: 0.25s; }
+    .action-item:nth-child(6) { animation-delay: 0.3s; }
+    .action-item:nth-child(7) { animation-delay: 0.35s; }
+
+    @keyframes itemReveal {
+      from { opacity: 0; transform: translateX(-8px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .item-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--amber);
+      line-height: 1;
+    }
+
+    .item-text {
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: var(--ink);
+    }
+
+    /* ─── LOADING / EMPTY STATES ─── */
+    .state-loading {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .loading-books {
+      display: inline-flex;
+      gap: 0.4rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .loading-spine {
+      width: 12px;
+      border-radius: 1px;
+      background: var(--border);
+      animation: spineLoad 1s ease-in-out infinite;
+    }
+
+    .loading-spine:nth-child(1) { height: 60px; animation-delay: 0s; }
+    .loading-spine:nth-child(2) { height: 75px; animation-delay: 0.1s; }
+    .loading-spine:nth-child(3) { height: 50px; animation-delay: 0.2s; }
+    .loading-spine:nth-child(4) { height: 80px; animation-delay: 0.3s; }
+    .loading-spine:nth-child(5) { height: 65px; animation-delay: 0.4s; }
+
+    @keyframes spineLoad {
+      0%, 100% { background: var(--border); transform: scaleY(0.85); }
+      50% { background: var(--amber); transform: scaleY(1); }
+    }
+
+    .loading-text {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .state-empty {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .state-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+
+    .state-empty h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .state-empty p {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .state-error {
+      background: #fff0ec;
+      border: 1.5px solid var(--rust);
+      border-left: 4px solid var(--rust);
+      padding: 1.25rem 1.5rem;
+      color: var(--rust);
+      font-size: 0.875rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.03em;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1.5px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+      gap: 1rem;
+    }
+
+    .footer-text {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .footer-text a {
+      color: var(--amber);
+      text-decoration: none;
+    }
+
+    .footer-apis {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .api-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 640px) {
+      .modal-inner { grid-template-columns: 1fr; }
+      .modal-cover-col { border-right: none; border-bottom: 1.5px solid var(--border); flex-direction: row; }
+      .modal-cover, .modal-cover-placeholder { width: 120px; flex-shrink: 0; }
+      header { flex-direction: column; gap: 0.5rem; }
+      .tagline { border-left: none; padding-left: 0; }
+      .books-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo"><em>Folio</em></div>
+    <div class="tagline">AI-Powered Book Explorer</div>
+  </header>
+
+  <!-- HERO SEARCH -->
+  <div class="hero">
+    <h1 class="hero-text">Find your next<br /><em>great read</em></h1>
+    <div class="search-bar" id="searchBar">
+      <input
+        class="search-input"
+        id="searchInput"
+        type="text"
+        placeholder="Search by title, author, or subject…"
+        autocomplete="off"
+        autofocus
+      />
+      <button class="search-btn" id="searchBtn" onclick="doSearch()">Search →</button>
+    </div>
+    <div class="search-hints">
+      <span class="hint-chip" onclick="quickSearch('Atomic Habits')">Atomic Habits</span>
+      <span class="hint-chip" onclick="quickSearch('Marcus Aurelius')">Marcus Aurelius</span>
+      <span class="hint-chip" onclick="quickSearch('Deep Work')">Deep Work</span>
+      <span class="hint-chip" onclick="quickSearch('Sapiens')">Sapiens</span>
+      <span class="hint-chip" onclick="quickSearch('Clean Code')">Clean Code</span>
+      <span class="hint-chip" onclick="quickSearch('The Lean Startup')">The Lean Startup</span>
+    </div>
+  </div>
+
+  <!-- RESULTS AREA -->
+  <div id="results-area"></div>
+
+  <!-- MODAL (rendered via JS) -->
+  <div id="modal-root"></div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p class="footer-text">Powered by <a href="https://openlibrary.org" target="_blank">Open Library</a> &amp; <a href="https://console.groq.com" target="_blank">Groq AI</a></p>
+    <div class="footer-apis">
+      <span class="api-badge">Open Library API</span>
+      <span class="api-badge">Groq llama3-8b</span>
+    </div>
+  </footer>
+
+  <script>
+    // ─── STATE ───────────────────────────────────────────────
+    let currentBooks = [];
+    let activeBook = null;
+
+    // ─── EVENT LISTENERS ─────────────────────────────────────
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doSearch();
+    });
+
+    function quickSearch(term) {
+      document.getElementById('searchInput').value = term;
+      doSearch();
+    }
+
+    // ─── SEARCH ──────────────────────────────────────────────
+    async function doSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) return;
+
+      const btn = document.getElementById('searchBtn');
+      btn.disabled = true;
+      btn.textContent = 'Searching…';
+
+      showLoading();
+
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=12`);
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Search failed');
+
+        currentBooks = data.books || [];
+        renderResults(query, data.total, currentBooks);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Search →';
+      }
+    }
+
+    // ─── RENDER RESULTS ──────────────────────────────────────
+    function showLoading() {
+      document.getElementById('results-area').innerHTML = `
+        <div class="state-loading">
+          <div class="loading-books">
+            ${[60,75,50,80,65].map(h => `<div class="loading-spine" style="height:${h}px"></div>`).join('')}
+          </div>
+          <p class="loading-text">Searching the library…</p>
+        </div>`;
+    }
+
+    function showError(msg) {
+      document.getElementById('results-area').innerHTML = `
+        <div style="max-width:900px;margin:0 auto;padding:0 2rem;">
+          <div class="state-error">⚠ Error: ${escHtml(msg)}</div>
+        </div>`;
+    }
+
+    function renderResults(query, total, books) {
+      const area = document.getElementById('results-area');
+
+      if (!books.length) {
+        area.innerHTML = `
+          <div class="state-empty">
+            <div class="state-empty-icon">📚</div>
+            <h3>No books found</h3>
+            <p>Try a different search term or author name.</p>
+          </div>`;
+        return;
+      }
+
+      const cardsHtml = books.map((book, i) => bookCardHtml(book, i)).join('');
+
+      area.innerHTML = `
+        <div class="results-header" style="max-width:1400px;margin:0 auto;padding:0 2rem;">
+          <span class="results-count">${total}+ results</span>
+          <span class="results-query">"${escHtml(query)}"</span>
+        </div>
+        <div class="books-grid" style="max-width:1400px;margin:0 auto;padding:0 2rem;">
+          ${cardsHtml}
+        </div>`;
+    }
+
+    function bookCardHtml(book, index) {
+      const cover = book.coverUrl
+        ? `<img class="book-cover" src="${escHtml(book.coverUrl)}" alt="${escHtml(book.title)}" loading="lazy" onerror="this.parentElement.innerHTML=coverPlaceholderHtml('${escHtml(book.title)}','${escHtml(book.author || '')}')" />`
+        : `<div class="book-cover-placeholder">${coverPlaceholderInner(book.title, book.author)}</div>`;
+
+      const tags = (book.subjects || []).slice(0, 3).map(s =>
+        `<span class="book-tag">${escHtml(s)}</span>`).join('');
+
+      return `
+        <div class="book-card" onclick="openBook(${index})">
+          <div class="book-cover-wrap">${cover}</div>
+          <div class="book-info">
+            ${book.year ? `<div class="book-year">${book.year}</div>` : ''}
+            <div class="book-title">${escHtml(book.title)}</div>
+            <div class="book-author">${escHtml(book.author || 'Unknown Author')}</div>
+            ${tags ? `<div class="book-tags">${tags}</div>` : ''}
+            ${book.summary ? `<div class="book-summary">${escHtml(book.summary)}</div>` : ''}
+            <div class="book-cta">
+              <span>Get AI Insights</span>
+              <span class="book-cta-arrow">→</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function coverPlaceholderHtml(title, author) {
+      return `<div class="book-cover-placeholder">${coverPlaceholderInner(title, author)}</div>`;
+    }
+
+    function coverPlaceholderInner(title, author) {
+      return `<div class="ph-title">${escHtml((title || '').slice(0, 40))}</div>
+              <div class="ph-spine"></div>
+              <div class="ph-author">${escHtml((author || '').slice(0, 30))}</div>`;
+    }
+
+    // ─── OPEN BOOK MODAL ─────────────────────────────────────
+    function openBook(index) {
+      activeBook = currentBooks[index];
+      renderModal(activeBook);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('modal-root').innerHTML = '';
+      document.body.style.overflow = '';
+      activeBook = null;
+    }
+
+    function renderModal(book) {
+      const cover = book.coverUrl
+        ? `<img class="modal-cover" src="${escHtml(book.coverUrl)}" alt="${escHtml(book.title)}" onerror="this.outerHTML='<div class=modal-cover-placeholder><svg width=40 height=40 viewBox=\'0 0 24 24\' fill=none stroke=\'currentColor\' stroke-width=\'1\'><path d=\'M4 19.5A2.5 2.5 0 0 1 6.5 17H20\'/>< path d=\'M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\'/></svg></div>'" />`
+        : `<div class="modal-cover-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </div>`;
+
+      const subjects = (book.subjects || []).slice(0, 8).map(s =>
+        `<span class="modal-subject">${escHtml(s)}</span>`).join('');
+
+      const metaItems = [
+        book.year && `<div class="modal-meta-item">Year<strong>${book.year}</strong></div>`,
+        book.pages && `<div class="modal-meta-item">Pages<strong>~${book.pages}</strong></div>`,
+        book.publisher && `<div class="modal-meta-item">Publisher<strong>${escHtml(book.publisher.slice(0, 25))}</strong></div>`,
+        book.editionCount && `<div class="modal-meta-item">Editions<strong>${book.editionCount}</strong></div>`
+      ].filter(Boolean).join('');
+
+      document.getElementById('modal-root').innerHTML = `
+        <div class="modal-overlay" onclick="handleOverlayClick(event)">
+          <div class="modal" role="dialog" aria-modal="true">
+            <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+            <div class="modal-inner">
+              <div class="modal-cover-col">
+                ${cover}
+                <div class="modal-meta">${metaItems}</div>
+              </div>
+              <div class="modal-content-col">
+                ${book.year ? `<div class="modal-year-badge">— ${book.year} —</div>` : ''}
+                <h2 class="modal-title">${escHtml(book.title)}</h2>
+                <div class="modal-author">by ${escHtml(book.author || 'Unknown Author')}</div>
+
+                ${book.summary ? `
+                  <div class="modal-section-title">About</div>
+                  <div class="modal-summary">${escHtml(book.summary)}</div>
+                ` : ''}
+
+                ${subjects ? `
+                  <div class="modal-section-title">Subjects</div>
+                  <div class="modal-subjects">${subjects}</div>
+                ` : ''}
+
+                <div class="ai-section" id="aiSection">
+                  <div class="modal-section-title">AI Action Items</div>
+                  <button class="ai-trigger-btn" id="aiBtn" onclick="generateActionItems()">
+                    <span>✦</span> Generate 7 Action Items
+                  </button>
+                  <div id="aiResults"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function handleOverlayClick(e) {
+      if (e.target.classList.contains('modal-overlay')) closeModal();
+    }
+
+    // ─── AI ACTION ITEMS ─────────────────────────────────────
+    async function generateActionItems() {
+      if (!activeBook) return;
+
+      const btn = document.getElementById('aiBtn');
+      const resultsEl = document.getElementById('aiResults');
+
+      btn.disabled = true;
+      btn.innerHTML = `<span class="ai-spinner"></span> Thinking…`;
+
+      try {
+        const res = await fetch('/api/action-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: activeBook.title,
+            author: activeBook.author,
+            summary: activeBook.summary,
+            subjects: activeBook.subjects
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'AI request failed');
+
+        renderActionItems(data, resultsEl);
+        btn.style.display = 'none';
+      } catch (err) {
+        resultsEl.innerHTML = `<div class="state-error" style="margin-top:1rem;">⚠ ${escHtml(err.message)}</div>`;
+        btn.disabled = false;
+        btn.innerHTML = `<span>✦</span> Try Again`;
+      }
+    }
+
+    function renderActionItems(data, container) {
+      const items = (data.actionItems || []).map((item, i) => `
+        <li class="action-item">
+          <div class="item-number">${String(i + 1).padStart(2, '0')}</div>
+          <div class="item-text">${escHtml(item)}</div>
+        </li>`).join('');
+
+      container.innerHTML = `
+        <div class="ai-results">
+          <div class="ai-model-badge">
+            <span class="ai-model-dot"></span>
+            Generated by ${escHtml(data.model || 'AI')}
+          </div>
+          <ul class="action-items-list">${items}</ul>
+        </div>`;
+    }
+
+    // ─── UTILS ───────────────────────────────────────────────
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Close modal on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && activeBook) closeModal();
+    });
+  </script>
+</body>
+</html>
