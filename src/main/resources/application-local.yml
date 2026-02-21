@@ -12,7 +12,7 @@ spring:
 
   groq:
     api-key: gsk_Y74HVh2ewULSL54CDWR2WGdyb3FYB9MbG2wiumVk7WNHRAg3wt0Ce0d94
-    model: ${GROQ_MODEL:openai/gpt-oss-120b}
+    model: openai/gpt-oss-120b
 
 logging:
   level:
