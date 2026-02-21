@@ -22,7 +22,7 @@ public class AiService {
 
     private final WebClient groqClient;
 
-    @Value("${app.groq.api-key:llama-3.3-70b-versatile}")
+    @Value("${app.groq.api-key}")
     private String groqApiKey;
 
     @Value("${app.groq.model:llama-3.3-70b-versatile}")
